@@ -256,13 +256,13 @@ def validar_campos_difieren(ruta1, ruta2):
     
     return valores_difieren or estructura_difiere
 
-def actualizar_yaml_local_ollama(base_url, modelo):
+def actualizar_yaml_local_ollama(ruta_yaml, base_url, modelo):
     """Inyecta de forma paralela y simétrica las decisiones del usuario en model y custom_providers."""
-    if not os.path.exists(OLLAMA_LOCAL_YAML):
-        log_error(f"No se encontró la plantilla local en: {OLLAMA_LOCAL_YAML}")
+    if not os.path.exists(ruta_yaml):
+        log_error(f"No se encontró la plantilla local en: {ruta_yaml}")
         return False
     try:
-        with open(OLLAMA_LOCAL_YAML, "r", encoding="utf-8") as f:
+        with open(ruta_yaml, "r", encoding="utf-8") as f:
             lineas = f.readlines()
         
         nuevas_lineas = []
@@ -314,11 +314,11 @@ def actualizar_yaml_local_ollama(base_url, modelo):
             else:
                 nuevas_lineas.append(linea)
                 
-        with open(OLLAMA_LOCAL_YAML, "w", encoding="utf-8") as f:
+        with open(ruta_yaml, "w", encoding="utf-8") as f:
             f.writelines(nuevas_lineas)
         return True
     except Exception as e:
-        log_error(f"Error al escribir en ollama.local.config.yalm: {e}")
+        log_error(f"Error al escribir en {ruta_yaml}: {e}")
         return False
 
 def leer_y_escribir_archivo(origen, destino, msg_log):
@@ -344,39 +344,135 @@ def gestionar_hermes():
         os.makedirs(CONFIG_YALM_DIR)
 
     # -----------------------------------------------------------------
+    # ETAPA INICIAL: INSTALACIÓN EN LIMPIO DE COMPONENTES
+    # -----------------------------------------------------------------
+    log_etapa("Etapa Inicial: Verificación de Instalación")
+    resp_limpio = input(f"{AMARILLO}[PREGUNTA]{RESET} ¿Correr Instalación en Limpio de Componentes de Hermes-Agent? [Y/N]: ").strip().lower()
+    
+    if resp_limpio == 'y':
+        log_paso("Iniciando la instalación limpia de Hermes-Agent...")
+        
+        # 1. Ejecutar instalador de Hermes-Agent y luego hermes setup en una ventana nueva de terminal
+        cmd_install = (
+            'powershell -NoProfile -ExecutionPolicy Bypass -Command "'
+            'Write-Host \\"Iniciando descarga e instalacion de Hermes-Agent...\\" -ForegroundColor Cyan; '
+            'iex (irm https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.ps1); '
+            'Write-Host \\"Actualizando variables de entorno de la sesion...\\" -ForegroundColor Cyan; '
+            '$env:Path = [Environment]::GetEnvironmentVariable(\\"Path\\", \\"User\\") + \\";\\" + [Environment]::GetEnvironmentVariable(\\"Path\\", \\"Machine\\"); '
+            'Write-Host \\"Ejecutando hermes setup...\\" -ForegroundColor Cyan; '
+            'hermes setup; '
+            'Write-Host \\"Proceso de instalacion finalizado. Esta ventana se cerrara en 3 segundos...\\" -ForegroundColor Green; '
+            'Start-Sleep -Seconds 3'
+            '"'
+        )
+        try:
+            subprocess.run(f'start /wait {cmd_install}', shell=True, cwd=USER_PROFILE)
+            log_exito("Instalación de Hermes-Agent y hermes setup completados.")
+        except Exception as e:
+            log_error(f"Error al ejecutar la instalación de Hermes-Agent: {e}")
+            error_detectado = True
+
+        # 2. Clonar hermes-webui en una nueva ventana de terminal
+        if not error_detectado:
+            hermes_dir = os.path.join(USER_PROFILE, r"AppData\Local\hermes")
+            if not os.path.exists(hermes_dir):
+                log_error(f"El directorio de instalación de Hermes no existe en: {hermes_dir}")
+                raise FileNotFoundError(f"Directorio de instalación obligatorio no encontrado: {hermes_dir}")
+            
+            webui_dir = os.path.join(hermes_dir, "hermes-webui")
+            if os.path.exists(webui_dir):
+                log_paso("Detectada instalación previa de hermes-webui. Limpiando para instalación limpia...")
+                import shutil
+                try:
+                    shutil.rmtree(webui_dir)
+                    log_exito("Instalación previa de hermes-webui removida con éxito.")
+                except Exception as e:
+                    log_error(f"No se pudo eliminar la carpeta hermes-webui: {e}. Se intentará clonar de todos modos.")
+
+            log_paso("Clonando hermes-webui en una nueva ventana de terminal...")
+            cmd_clone = (
+                'powershell -NoProfile -ExecutionPolicy Bypass -Command "'
+                'Write-Host \\"Iniciando clonado de hermes-webui...\\" -ForegroundColor Cyan; '
+                '$env:Path = [Environment]::GetEnvironmentVariable(\\"Path\\", \\"User\\") + \\";\\" + [Environment]::GetEnvironmentVariable(\\"Path\\", \\"Machine\\"); '
+                'git clone https://github.com/nesquena/hermes-webui.git hermes-webui; '
+                'Write-Host \\"Clonado finalizado. Esta ventana se cerrara en 3 segundos...\\" -ForegroundColor Green; '
+                'Start-Sleep -Seconds 3'
+                '"'
+            )
+            try:
+                subprocess.run(f'start /wait {cmd_clone}', shell=True, cwd=hermes_dir)
+                log_exito("Clonado de hermes-webui completado.")
+            except Exception as e:
+                log_error(f"Error al clonar hermes-webui: {e}")
+                error_detectado = True
+
+    # -----------------------------------------------------------------
     # ETAPA 1: RECOLECCIÓN DE INPUTS POR SECCIÓN
     # -----------------------------------------------------------------
     log_etapa("Etapa 1: Recolección de Inputs")
     
-    # Inputs Sección 1: Perfil Ollama
-    resp_ollama = input(f"{AMARILLO}[PREGUNTA]{RESET} ¿Usar Modelos de Ollama Locales? [Y/N]: ").strip().lower()
-    ollama_final_base_url = None
-    ollama_final_modelo = None
-    procesar_ollama_profile = False
+    # Inputs Sección 1: Selección de Perfil de Configuración
+    archivos_yalm = []
+    if os.path.exists(CONFIG_YALM_DIR):
+        archivos_yalm = [f for f in os.listdir(CONFIG_YALM_DIR) if f.endswith(".yalm")]
+    
+    perfil_seleccionado = None
+    perfil_ruta_completa = None
+    final_base_url = None
+    final_modelo = None
+    procesar_personalizacion = False
 
-    if resp_ollama == 'y':
-        valores_actuales = extraer_datos_config_yaml(OLLAMA_LOCAL_YAML)
+    if archivos_yalm:
+        print(f"{AMARILLO}[PREGUNTA]{RESET} ¿Qué Perfil de configuración desea aplicar?:")
+        for idx, archivo in enumerate(archivos_yalm, 1):
+            print(f"  {idx}. {archivo}")
         
-        print(f"{VERDE}[INFO]{RESET} Valores predefinidos leídos de OLLAMA_LOCAL_YAML: Base_URL: {valores_actuales['base_url']}, Model: {valores_actuales['default']}")
-        resp_cambiar = input(f"{AMARILLO}[PREGUNTA]{RESET} ¿Desea cambiar los valores? [Y/N]: ").strip().lower()
+        while True:
+            seleccion = input(f"{AMARILLO}[INPUT]{RESET} Seleccione una opción (1-{len(archivos_yalm)}): ").strip()
+            try:
+                opcion = int(seleccion)
+                if 1 <= opcion <= len(archivos_yalm):
+                    perfil_seleccionado = archivos_yalm[opcion - 1]
+                    perfil_ruta_completa = os.path.join(CONFIG_YALM_DIR, perfil_seleccionado)
+                    break
+                else:
+                    log_error(f"Opción fuera de rango (1-{len(archivos_yalm)}).")
+            except ValueError:
+                log_error("Por favor, ingrese un número válido.")
         
-        if resp_cambiar == 'y':
-            ollama_final_base_url = input(f"{AMARILLO}[INPUT]{RESET} Base URL (ej.: http://127.0.0.1:11434/v1): ").strip()
-            ollama_final_modelo = input(f"{AMARILLO}[INPUT]{RESET} Modelo por defecto (ej.: deepseek-r1:14b): ").strip()
+        # Si el perfil seleccionado contiene 'ollama' en su nombre, permitimos personalizar
+        if "ollama" in perfil_seleccionado.lower():
+            valores_actuales = extraer_datos_config_yaml(perfil_ruta_completa)
+            print(f"{VERDE}[INFO]{RESET} Valores predefinidos leídos de {perfil_seleccionado}: Base_URL: {valores_actuales['base_url']}, Model: {valores_actuales['default']}")
             
-            if not ollama_final_base_url or not ollama_final_modelo:
+            # Cambiar Base URL
+            print(f"{VERDE}[INFO]{RESET} Base URL actual: {valores_actuales['base_url']}")
+            resp_cambiar_url = input(f"{AMARILLO}[PREGUNTA]{RESET} ¿Desea cambiar la Base URL? [Y/N]: ").strip().lower()
+            if resp_cambiar_url == 'y':
+                final_base_url = input(f"{AMARILLO}[INPUT]{RESET} Base URL (ej.: http://127.0.0.1:11434/v1): ").strip()
+            else:
+                final_base_url = valores_actuales['base_url']
+                
+            # Cambiar Modelo
+            print(f"{VERDE}[INFO]{RESET} Modelo actual: {valores_actuales['default']}")
+            resp_cambiar_modelo = input(f"{AMARILLO}[PREGUNTA]{RESET} ¿Desea cambiar el Modelo? [Y/N]: ").strip().lower()
+            if resp_cambiar_modelo == 'y':
+                final_modelo = input(f"{AMARILLO}[INPUT]{RESET} Modelo por defecto (ej.: deepseek-r1:14b): ").strip()
+            else:
+                final_modelo = valores_actuales['default']
+            
+            # Validar entradas y estados de las variables
+            if not final_base_url or not final_modelo:
                 log_error("Entradas inválidas o vacías detectadas. Se abortará la inyección para proteger la integridad estructural.")
                 error_detectado = True
-            else:
-                procesar_ollama_profile = True
-        else:
-            if valores_actuales['base_url'] == "No definido" or valores_actuales['default'] == "No definido":
-                log_error("No se pudieron aislar variantes válidas en OLLAMA_LOCAL_YAML. Configuración manual mandatoria.")
+            elif final_base_url == "No definido" or final_modelo == "No definido":
+                log_error("No se pudieron aislar variantes válidas en el archivo. Configuración manual mandatoria.")
                 error_detectado = True
             else:
-                ollama_final_base_url = valores_actuales['base_url']
-                ollama_final_modelo = valores_actuales['default']
-                procesar_ollama_profile = True
+                procesar_personalizacion = True
+    else:
+        log_error(f"No se encontraron perfiles .yalm en la ruta: {CONFIG_YALM_DIR}")
+        error_detectado = True
 
     # Inputs Sección 2: API Server
     resp_api = input(f"{AMARILLO}[PREGUNTA]{RESET} ¿Activar API Server? [Y/N]: ").strip().lower()
@@ -418,32 +514,31 @@ def gestionar_hermes():
     log_etapa("Etapa 2: Persistencia y Modificación de Archivos")
     
     if error_detectado:
-        log_error("Flujo de persistencia comprometido por inputs inválidos en Etapa 1. Cambios cancelados.")
+        log_error("Flujo de persistencia comprometido por inputs inválidos o falta de perfil en Etapa 1. Cambios cancelados.")
         return True
 
-    # 1. Escritura y sincronización simétrica de Perfiles YAML
-    if resp_ollama == 'y' and procesar_ollama_profile:
-        log_paso(f"Modificando simétricamente model: y custom_providers: en la plantilla: {OLLAMA_LOCAL_YAML}...")
-        if actualizar_yaml_local_ollama(ollama_final_base_url, ollama_final_modelo):
-            log_exito("Valores variantes sincronizados en ambos bloques espejo con éxito.")
-            
-            if validar_campos_difieren(OLLAMA_LOCAL_YAML, HERMES_GLOBAL_CONFIG_PATH):
+    # 1. Escritura y sincronización de Perfiles YAML
+    if perfil_seleccionado and perfil_ruta_completa:
+        if "ollama" in perfil_seleccionado.lower() and procesar_personalizacion:
+            log_paso(f"Modificando simétricamente model: y custom_providers: en la plantilla: {perfil_seleccionado}...")
+            if actualizar_yaml_local_ollama(perfil_ruta_completa, final_base_url, final_modelo):
+                log_exito("Valores variantes sincronizados en ambos bloques espejo con éxito.")
+            else:
+                log_error("No se pudo actualizar el perfil de Ollama.")
+                return True
+        
+        # Aplicamos el perfil seleccionado
+        log_paso(f"Aplicando el perfil: {perfil_seleccionado}...")
+        if validar_campos_difieren(perfil_ruta_completa, HERMES_GLOBAL_CONFIG_PATH):
+            if os.path.exists(HERMES_GLOBAL_CONFIG_PATH):
                 global_datos = extraer_datos_config_yaml(HERMES_GLOBAL_CONFIG_PATH)
-                if not global_datos["tiene_custom_providers"] and os.path.exists(HERMES_GLOBAL_CONFIG_PATH):
-                    leer_y_escribir_archivo(HERMES_GLOBAL_CONFIG_PATH, FACTORY_BKP_YAML, f"Respaldo dinámico de fábrica guardado en: {FACTORY_BKP_YAML}")
-                
-                leer_y_escribir_archivo(OLLAMA_LOCAL_YAML, HERMES_GLOBAL_CONFIG_PATH, f"Mutación global simétrica aplicada en: {HERMES_GLOBAL_CONFIG_PATH}")
-            else:
-                log_exito("La estructura global ya se encuentra en perfecta sincronía simétrica con Ollama.")
-    else:
-        log_paso("Validando balance estructural con configuración de Fábrica...")
-        if os.path.exists(FACTORY_BKP_YAML):
-            if validar_campos_difieren(FACTORY_BKP_YAML, HERMES_GLOBAL_CONFIG_PATH):
-                leer_y_escribir_archivo(FACTORY_BKP_YAML, HERMES_GLOBAL_CONFIG_PATH, "Estructura asimétrica/Ollama detectada. Configuración original de fábrica restablecida.")
-            else:
-                log_exito("El ecosistema global ya se encuentra limpio de Ollama y alineado con Fábrica. No requiere escritura.")
+                if not global_datos["tiene_custom_providers"] and perfil_seleccionado != os.path.basename(FACTORY_BKP_YAML):
+                    if not os.path.exists(FACTORY_BKP_YAML):
+                        leer_y_escribir_archivo(HERMES_GLOBAL_CONFIG_PATH, FACTORY_BKP_YAML, f"Respaldo dinámico de fábrica guardado en: {FACTORY_BKP_YAML}")
+            
+            leer_y_escribir_archivo(perfil_ruta_completa, HERMES_GLOBAL_CONFIG_PATH, f"Perfil aplicado con éxito en: {HERMES_GLOBAL_CONFIG_PATH}")
         else:
-            log_error("No se localizó el archivo factory.bkp.config.yalm para la restauración.")
+            log_exito(f"La estructura global ya se encuentra en perfecta sincronía con el perfil {perfil_seleccionado}.")
 
     # 2. Modificación de variables API_SERVER en .env
     if resp_api == 'y' and llave_api_final:
