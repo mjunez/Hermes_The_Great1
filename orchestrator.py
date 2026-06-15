@@ -1,15 +1,14 @@
 import os
 import time
+import subprocess
 import secrets
 import base64
-
 from config import Config
 from console_ui import ConsoleUI
 from env_manager import EnvManager
 from hermes_installer import HermesInstaller
 from process_manager import ProcessManager
 from yaml_config_manager import YamlConfigManager
-
 
 class HermesOrchestrator:
     def __init__(self):
@@ -25,16 +24,6 @@ class HermesOrchestrator:
         self.llave_api_final = None
         self.resp_pass = False
         self.webui_pass_final = None
-
-    def run_clean_install_stage(self):
-        ConsoleUI.log_stage("Etapa Inicial: Verificación de Instalación")
-        if ConsoleUI.prompt_yn("¿Correr Instalación en Limpio de Componentes de Hermes-Agent?"):
-            if not self.installer.run_clean_install():
-                self.error_detected = True
-
-            if not self.error_detected:
-                if not self.installer.clone_webui():
-                    self.error_detected = True
 
     def run_input_stage(self):
         ConsoleUI.log_stage("Etapa 1: Recolección de Inputs")
@@ -152,12 +141,12 @@ class HermesOrchestrator:
             if YamlConfigManager.validates_differ(self.perfil_ruta_completa, Config.HERMES_GLOBAL_CONFIG_PATH):
                 if os.path.exists(Config.HERMES_GLOBAL_CONFIG_PATH):
                     global_datos = YamlConfigManager.extract_config(Config.HERMES_GLOBAL_CONFIG_PATH)
-                    if not global_datos["tiene_custom_providers"] and self.perfil_seleccionado != os.path.basename(Config.FACTORY_BKP_YAML):
-                        if not os.path.exists(Config.FACTORY_BKP_YAML):
+                    if not global_datos["tiene_custom_providers"] and self.perfil_seleccionado != os.path.basename(Config.RESTORE_BKP_YAML):
+                        if not os.path.exists(Config.RESTORE_BKP_YAML):
                             YamlConfigManager.read_and_write(
                                 Config.HERMES_GLOBAL_CONFIG_PATH,
-                                Config.FACTORY_BKP_YAML,
-                                f"Respaldo dinámico de fábrica guardado en: {Config.FACTORY_BKP_YAML}"
+                                Config.RESTORE_BKP_YAML,
+                                f"Respaldo dinámico de fábrica guardado en: {Config.RESTORE_BKP_YAML}"
                             )
 
                 YamlConfigManager.read_and_write(
@@ -198,19 +187,21 @@ class HermesOrchestrator:
         ProcessManager.kill_by_port(Config.GATEWAY_API_PORT)
         ProcessManager.kill_by_port(Config.DASHBOARD_PORT)
         ProcessManager.kill_by_port(Config.WEBUI_PORT)
+        ProcessManager.kill_by_port(Config.MESSAGING_PORT)
 
         ConsoleUI.log_step("Aplicando golpe maestro: Purgando hilos huérfanos de hermes.exe...")
         ProcessManager.kill_by_name("hermes.exe")
         time.sleep(1.0)
 
         ConsoleUI.log_step("Lanzando Core Daemon Invisible ('hermes gateway run' a secas)...")
-        if ProcessManager.run_hidden("hermes gateway restart"):
-            ProcessManager.run_hidden("hermes gateway run")
+        if ProcessManager.run_hidden("hermes gateway run"):
+            """ProcessManager.run_hidden("start /wait hermes gateway run")"""
             ConsoleUI.log_success("Gateway inicializado exitosamente en segundo plano.")
         else:
             self.error_detected = True
 
         ConsoleUI.log_step(f"Lanzando Servicio de Telemetría Invisible ('hermes dashboard' en puerto {Config.DASHBOARD_PORT})...")
+        # NOTA: --skip-build eliminado según solicitud del usuario
         cmd_dashboard = f"hermes dashboard --host 0.0.0.0 --port {Config.DASHBOARD_PORT} --insecure --no-open --skip-build"
         if ProcessManager.run_hidden(cmd_dashboard):
             ConsoleUI.log_success("Dashboard montado correctamente.")
@@ -224,8 +215,47 @@ class HermesOrchestrator:
         else:
             self.error_detected = True
 
+    def run_installation_steps(self):
+        """Ejecuta instalación, setup y dashboard en tres terminales separadas"""
+        ConsoleUI.log_stage("Iniciando procesos separados de instalación")
+        
+        ConsoleUI.log_step("Installation Step 1: Instalando agente Hermes")
+        if not self.installer.install_agent_only():
+            self.error_detected = True
+            return False
+
+        # Paso "hermes setup" según requerimiento.
+        ConsoleUI.log_step("Installation Step 2: Configurando dashboard")
+        if not self.installer.setup_dashboard(Config.DASHBOARD_PORT):
+            self.error_detected = True
+            return False
+
+        # Paso "hermes webui" según requerimiento.
+        ConsoleUI.log_step("Installation Step 3: Configurando hermes webui")
+        if not self.installer.clone_webui():
+            self.error_detected = True
+            return False
+
+        return True
+
+    def run_update_terminal(self):
+        """Ejecuta hermes update en una terminal separada"""
+        ConsoleUI.log_stage("Ejecutando actualización de Hermes en terminal separada")
+        try:
+            result = subprocess.run(f'start /wait hermes update', shell=True)
+            
+            if result.returncode == 0:
+                ConsoleUI.log_success("Actualización de Hermes completada.")
+                return True
+            else:
+                ConsoleUI.log_error(f"Actualización falló: {result.stderr}")
+                return False
+        except Exception as e:
+            ConsoleUI.log_error(f"Error ejecutando hermes update: {e}")
+            return False
+
     def execute(self):
-        self.run_clean_install_stage()
+        """Flujo principal después de instalación/actualización"""
         self.run_input_stage()
         self.run_persistence_stage()
         if not self.error_detected:
