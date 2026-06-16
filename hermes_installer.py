@@ -31,8 +31,8 @@ class HermesInstaller:
         """Configura hermes dashboard en un proceso separado (sin --skip-build)"""
         ConsoleUI.log_step(f"Configurando dashboard en puerto {port}...")
         try:
-            subprocess.Popen(f'hermes dashboard --host 0.0.0.0 --port {port} --insecure --no-open', shell=True, cwd=self.user_profile)
-            ConsoleUI.log_success("Configurando Dashboard.")
+            subprocess.Popen(f'start /wait hermes dashboard --host 0.0.0.0 --port {port} --insecure --no-open', shell=True, cwd=self.user_profile)
+            ConsoleUI.log_alert("Configuración de Dashboard lanzada... NO CIERRE LA VENTANA HASTA QUE DIGA \" ✓ Web UI built\".")
             return True
         except Exception as e:
             ConsoleUI.log_error(f"Error ejecutando dashboard setup: {e}")
@@ -40,12 +40,12 @@ class HermesInstaller:
 
     def clone_webui(self):
         """Clona hermes-webui (mantenido para compatibilidad)"""
-        hermes_dir = os.path.join(self.user_profile, r"AppData\Local\hermes")
+        hermes_dir = os.path.join(self.user_profile, r"AppData\\Local\\hermes")
         if not os.path.exists(hermes_dir):
             ConsoleUI.log_error(f"El directorio de instalación de Hermes no existe en: {hermes_dir}")
             raise FileNotFoundError(f"Directorio de instalación obligatorio no encontrado: {hermes_dir}")
 
-        webui_dir = os.path.join(hermes_dir, "hermes-webui")
+        webui_dir = os.path.join(hermes_dir, r"\\hermes-webui")
         if os.path.exists(webui_dir):
             ConsoleUI.log_step("Detectada instalación previa de hermes-webui. Limpiando para instalación limpia...")
             try:

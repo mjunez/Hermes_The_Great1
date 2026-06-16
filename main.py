@@ -3,40 +3,46 @@ import subprocess
 import msvcrt
 from console_ui import ConsoleUI
 from orchestrator import HermesOrchestrator
+from config import Config
+from pathlib import Path
 
-def check_hermes_version():
-    """Verifica si Hermes está instalado ejecutando 'hermes --version'"""
+def hermes_folder_exists() -> bool:
+    hermes_dir = Path(os.environ["LOCALAPPDATA"]) / "hermes"
+    return hermes_dir.is_dir()
+
+def check_hermes():
     try:
-        result = subprocess.run(
+        # Ejecuta 'hermes -version' de forma silenciosa
+        resultado = subprocess.run(
             ["hermes", "--version"],
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=5
         )
-        return result.returncode == 0
-    except Exception:
+
+        # Si el código de salida es 0, es que respondió correctamente
+        return resultado.returncode == 0
+
+    except FileNotFoundError:
+        # Si Windows dice que el comando no existe en el PATH, devuelve False
         return False
 
 def uninstall_hermes():
     """Ejecuta los comandos de desinstalación solicitados en orden"""
-    ConsoleUI.log_step("Desinstalando Hermes...")
-    
+    ConsoleUI.log_step("Desinstalando Hermes...")    
+    orchestrator = HermesOrchestrator()
+    orchestrator.kill_hermes_processes()    
     ConsoleUI.log_step("Ejecutando hermes uninstall...")
-    subprocess.run(["hermes", "uninstall"], shell=True)
-    
-    ConsoleUI.log_step("Deteniendo procesos de Python...")
-    subprocess.Popen([
-        "powershell", "-Command",
-        "Stop-Process -Name \"python\" -Force -ErrorAction SilentlyContinue"
-    ], shell=True)
-    
-    ConsoleUI.log_step("Eliminando directorio de Hermes...")
-    subprocess.Popen([
-        "powershell", "-Command",
-        "Remove-Item -Path \"$env:LOCALAPPDATA\\hermes\" -Recurse -Force"
-    ], shell=True)
+    subprocess.run(["hermes", "uninstall"], shell=True)    
     
     ConsoleUI.log_success("Desinstalación de Hermes completada... Vuelva a ejecutar .\htg1 para re-instalar Hermes.")
+    if ConsoleUI.prompt_yn("¿Desea borrar la carpeta de instalación de Hermes?"):
+        if hermes_folder_exists():
+            ConsoleUI.log_step("Borrando carpeta de instalación de Hermes...")
+            subprocess.run(["rmdir", "/s", "/q", os.path.expandvars("%LOCALAPPDATA%\\hermes")], shell=True)
+        else:
+            ConsoleUI.log_warning("No se encontró la ningunacarpeta de instalación de Hermes para borrar.")
+
 
 def run_fresh_install_flow():
     """Ejecuta el flujo de instalación seguido de configuración"""
@@ -47,13 +53,13 @@ def run_fresh_install_flow():
             ConsoleUI.log_error("Falló el flujo de instalación separada")
             return True
     
-    ConsoleUI.log_success("Proceso de instalación terminado!... Vuelva a ejecutar .\htg1 para levantar los servicios de Hermes.")    
+    ConsoleUI.log_success("Instalación completa!... Vuelva a ejecutar .\htg1 para levantar los servicios de Hermes.")    
     return False
 
 def main():
     ConsoleUI.print_logo()
     try:
-        if not check_hermes_version():
+        if not check_hermes():
             ConsoleUI.log_step("No se detectó instalación previa de Hermes")
             hubo_error = run_fresh_install_flow()
         else:
@@ -70,11 +76,16 @@ def main():
                         hubo_error = True
                     else:
                         ConsoleUI.log_step("Actualización terminada con éxito...")
-                        hubo_error = orchestrator.execute()
-                else:
-                    ConsoleUI.log_step("Omitiendo actualización, continuando con flujo normal...")
-                    orchestrator = HermesOrchestrator()
-                    hubo_error = orchestrator.execute()
+                
+                if ConsoleUI.prompt_yn("¿Desea reconfigurar Hermes?"):
+                    ConsoleUI.log_step("Ejecutando reconfiguración en terminal separada...")
+                    subprocess.run(f'start /wait hermes setup', shell=True)
+                    ConsoleUI.log_step("Reconfiguración terminada con éxito!")
+                else:                    
+                    ConsoleUI.log_step("Continuando Orquestación...")
+
+                orchestrator = HermesOrchestrator()
+                hubo_error = orchestrator.execute()
 
         print()
         if hubo_error:
