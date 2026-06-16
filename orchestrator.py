@@ -203,7 +203,7 @@ class HermesOrchestrator:
         else:
             self.error_detected = True
 
-        ConsoleUI.log_step(f"Lanzando Servicio de Telemetría ('hermes dashboard' en puerto {Config.DASHBOARD_PORT})...")
+        ConsoleUI.log_step(f"Lanzando Servicio de Dashboard ('hermes dashboard' en puerto {Config.DASHBOARD_PORT})...")
         # NOTA: --skip-build eliminado según solicitud del usuario
         cmd_dashboard = f"hermes dashboard --host 0.0.0.0 --port {Config.DASHBOARD_PORT} --insecure --no-open --skip-build"
         if ProcessManager.run_hidden(cmd_dashboard):
@@ -211,18 +211,19 @@ class HermesOrchestrator:
         else:
             self.error_detected = True
 
-        ConsoleUI.log_step(f"Lanzando Interfaz Gráfica ('Hermes WebUI' en puerto {Config.WEBUI_PORT})...")
+        ConsoleUI.log_step(f"Lanzando Web UI ('Hermes WebUI' en puerto {Config.WEBUI_PORT})...")
         cmd_webui = f'python "{Config.WEBUI_BOOTSTRAP}" --host 0.0.0.0 {Config.WEBUI_PORT} --no-browser'
         if ProcessManager.run_hidden(cmd_webui):
             ConsoleUI.log_success("WebUI levantada correctamente.")
         else:
+            ConsoleUI.log_alert("No se pudo levantar la WebUI. Revise su configuración o intente instalar nuevamente.")
             self.error_detected = True
         
         if not self.error_detected:            
             ConsoleUI.log_success("Endpoints disponibles...")
-            ConsoleUI.log_alert(f"Gateway API: http://localhost:{Config.GATEWAY_API_PORT}")
-            ConsoleUI.log_alert(f"Dashboard: http://localhost:{Config.DASHBOARD_PORT}")
-            ConsoleUI.log_alert(f"Hermes WebUI: http://localhost:{Config.WEBUI_PORT}")
+            ConsoleUI.log_info(f"Gateway API: http://localhost:{Config.GATEWAY_API_PORT}")
+            ConsoleUI.log_info(f"Dashboard: http://localhost:{Config.DASHBOARD_PORT}")
+            ConsoleUI.log_info(f"Hermes WebUI: http://localhost:{Config.WEBUI_PORT}")
 
     def run_installation_steps(self):
         """Ejecuta instalación, setup y dashboard en tres terminales separadas"""

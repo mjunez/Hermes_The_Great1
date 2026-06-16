@@ -45,8 +45,11 @@ class ConsoleUI:
 
     @classmethod
     def log_alert(cls, mensaje):
-        """Imprime un mensaje de alerta en la consola en color naranja."""
         print(f"{cls.NARANJA}[ALERTA]{cls.RESET} {mensaje}")
+
+    @classmethod
+    def log_info(cls, mensaje):
+        print(f"{cls.CIAN}[INFO]{cls.RESET} {mensaje}")
 
     @classmethod
     def log_stage(cls, titulo):
