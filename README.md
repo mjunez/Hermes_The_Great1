@@ -64,18 +64,22 @@
 <hr>
 
 <h2>💾 Installation</h2>
-<p>Run these commands in your Windows Terminal:</p>
+<p>Run these commands in your Windows Terminal to Clone it wherever you want...</p>
 
 <strong>Powershell / Command Prompt</strong>
 ```cmd
-# 1. Clone & Enter
+
 git clone mjunez/Hermes_The_Great1
 cd Hermes_The_Great1
 
 ```
+
+<h2>🚀 Ussage</h2>
+<p>Run this and Just let HTG1 drives you!...</p>
+
 <strong>Powershell / Command Prompt</strong>
 ```cmd
-# 2. Just let HTG1 drives you!...
+
 .\htg1
 
 ```
