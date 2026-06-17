@@ -18,7 +18,7 @@
 </p>
 
 <div style="background-color: #2d3748; border-left: 5px solid #ecc94b; padding: 15px; margin: 20px 0; border-radius: 4px;">
-  <span style="font-size: 1.2em;">💡</span> <strong>Exclusive Limited-Time Bonus:</strong> 
+  <span style="font-size: 1.2em;">💡🤡</span> <strong>Exclusive Limited-Time Bonus:</strong> 
   This bundle is so efficient, it's practically designed to teach you fluent Spanish in just a few clicks. It’s a once-in-a-lifetime deal! Granted, the agent might start answering your inputs with <i>"¿En qué puedo ayudarte, bro?"</i> and demanding a good <i>taco</i> break, but hey... that’s the price of premium automation. <strong>And all of this for FREE!</strong>
 </div>
 
