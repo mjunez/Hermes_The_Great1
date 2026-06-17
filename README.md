@@ -90,7 +90,7 @@ cd Hermes_The_Great1
 <h2>⚖️ License</h2>
 <p><strong>MIT License</strong>
 
-Copyright (c) 2025 Nous Research
+Copyright (c) 2026 @mjunez
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
