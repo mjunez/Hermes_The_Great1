@@ -87,9 +87,8 @@ cd Hermes_The_Great1
 </div>
 
 
-<h2>🚀 License</h2>
-<strong>MIT</strong>
-<p>MIT License
+<h2>⚖️ License</h2>
+<p><strong>MIT License</strong>
 
 Copyright (c) 2025 Nous Research
 
