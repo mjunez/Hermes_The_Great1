@@ -1,7 +1,7 @@
 <div align="center">
   <img src="https://img.shields.io/badge/Platform-Windows-0078D4?style=for-the-badge&logo=windows&logoColor=white" alt="Windows Platform" />
   <br><br>
-  <h1>🚀 Hermes_The_Great1</h1>
+  <h1>💆 Hermes_The_Great1</h1>
   <p><i>The definitive all-in-one installation bundle and service orchestrator for the Hermes Agent ecosystem on Windows.</i></p>
   
   <img src="https://github.com/mjunez/Hermes_The_Great1/blob/main/readme/images/image2.png?raw=true" alt="Hermes The Great Banner" width="100%" style="max-width: 700px; border-radius: 8px; margin: 20px 0;" />
