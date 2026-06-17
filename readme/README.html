@@ -69,7 +69,7 @@
 <strong>Powershell / Command Prompt</strong>
 ```cmd
 
-git clone mjunez/Hermes_The_Great1
+git clone https://github.com/mjunez/Hermes_The_Great1
 cd Hermes_The_Great1
 
 ```
