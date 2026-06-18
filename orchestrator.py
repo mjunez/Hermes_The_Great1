@@ -179,26 +179,13 @@ class HermesOrchestrator:
         else:
             self.env_mgr.delete_var("HERMES_WEBUI_PASSWORD")
             ConsoleUI.log_success("Filtro de contraseña deshabilitado por completo del .env.")
-    def kill_hermes_processes(self):
-        ConsoleUI.log_step("Ejecutando purga forzada de sockets liberando puertos activos...")        
-        ProcessManager.kill_by_port(Config.GATEWAY_API_PORT)
-        ProcessManager.kill_by_port(Config.MESSAGING_PORT)
-        ProcessManager.kill_by_port(Config.DASHBOARD_PORT)
-        ProcessManager.kill_by_port(Config.WEBUI_PORT)
-        """
-        ConsoleUI.log_step("Terminando proceso principal de hermes.exe...")
-        ProcessManager.kill_by_name("hermes.exe")
-        time.sleep(1.0)
-        """
-        time.sleep(1.0)
 
     def run_restart_stage(self):
         ConsoleUI.log_stage("Etapa 3: Orquestación e Inicio de Servicios")
 
-        self.kill_hermes_processes()
-
         ConsoleUI.log_step("Lanzando Core Daemon ('hermes gateway')...")
         if ProcessManager.run_hidden("hermes gateway"):
+            ProcessManager.run_hidden("hermes gateway")
             ConsoleUI.log_success("Gateway inicializado exitosamente en segundo plano.")
         else:
             self.error_detected = True

@@ -31,7 +31,6 @@ def uninstall_hermes():
     """Ejecuta los comandos de desinstalación solicitados en orden"""
     ConsoleUI.log_step("Desinstalando Hermes...")    
     orchestrator = HermesOrchestrator()
-    orchestrator.kill_hermes_processes()    
     ConsoleUI.log_step("Ejecutando hermes uninstall...")
     subprocess.run(["hermes", "uninstall"], shell=True)    
     
