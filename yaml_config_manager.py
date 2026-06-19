@@ -60,12 +60,13 @@ class YamlConfigManager:
         return valores_difieren or estructura_difiere
 
     @staticmethod
-    def update_ollama_local(yaml_path, base_url, model):
-        if not os.path.exists(yaml_path):
-            ConsoleUI.log_error(f"No se encontró la plantilla local en: {yaml_path}")
-            return False
+    def build_ollama_local_config(source_yaml_path, base_url, model):
+        if not os.path.exists(source_yaml_path):
+            ConsoleUI.log_error(f"No se encontró el archivo de origen {source_yaml_path}.")
+            return None
+
         try:
-            with open(yaml_path, "r", encoding="utf-8") as f:
+            with open(source_yaml_path, "r", encoding="utf-8") as f:
                 lineas = f.readlines()
 
             nuevas_lineas = []
@@ -116,12 +117,32 @@ class YamlConfigManager:
                 else:
                     nuevas_lineas.append(linea)
 
-            with open(yaml_path, "w", encoding="utf-8") as f:
-                f.writelines(nuevas_lineas)
+            return "".join(nuevas_lineas)
+        except Exception as e:
+            ConsoleUI.log_error(f"Error al construir configuración de Ollama desde {source_yaml_path}: {e}")
+            return None
+
+    @staticmethod
+    def write_string_to_file(destination, content, log_msg):
+        try:
+            with open(destination, "w", encoding="utf-8") as f:
+                f.write(content)
+            ConsoleUI.log_success(log_msg)
             return True
         except Exception as e:
-            ConsoleUI.log_error(f"Error al escribir en {yaml_path}: {e}")
+            ConsoleUI.log_error(f"Error al escribir en {destination}: {e}")
             return False
+
+    @staticmethod
+    def update_ollama_local(source_yaml_path, yaml_path, base_url, model):
+        content = YamlConfigManager.build_ollama_local_config(source_yaml_path, base_url, model)
+        if content is None:
+            return False
+        return YamlConfigManager.write_string_to_file(
+            yaml_path,
+            content,
+            f"Configuración de Ollama generada en memoria y guardada en: {yaml_path}"
+        )
 
     @staticmethod
     def read_and_write(source, destination, log_msg):
