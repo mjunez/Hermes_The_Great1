@@ -35,7 +35,7 @@ class HermesOrchestrator:
         archivos_yalm = [f for f in os.listdir(Config.CONFIG_YALM_DIR) if f.endswith(".yalm")]
 
         if archivos_yalm:
-            print(f"{ConsoleUI.AMARILLO}[PREGUNTA]{ConsoleUI.RESET} ¿Qué Perfil de configuración desea aplicar?:")
+            ConsoleUI.log_question(f"¿Qué Perfil de configuración desea aplicar?:")
             for idx, archivo in enumerate(archivos_yalm, 1):
                 print(f"  {idx}. {archivo}")
 
@@ -58,15 +58,15 @@ class HermesOrchestrator:
                     f"Valores predefinidos leídos de {self.perfil_seleccionado}: Base_URL: {self.valores_actuales['base_url']}, Model: {self.valores_actuales['default']}"
                 )
 
-                print(f"{ConsoleUI.VERDE}[INFO]{ConsoleUI.RESET} Base URL actual: {self.valores_actuales['base_url']}")
+                ConsoleUI.log_info(f"Base URL actual: {ConsoleUI.NARANJA}{self.valores_actuales['base_url']}")
                 if ConsoleUI.prompt_yn("¿Desea cambiar la Base URL?"):
-                    self.final_base_url = ConsoleUI.prompt_input("Base URL (ej.: http://127.0.0.1:11434/v1)")
+                    self.final_base_url = ConsoleUI.prompt_input(f"Base URL (ej.: {ConsoleUI.NARANJA}http://127.0.0.1:11434/v1{ConsoleUI.RESET})")
                 else:
                     self.final_base_url = self.valores_actuales['base_url']
 
-                print(f"{ConsoleUI.VERDE}[INFO]{ConsoleUI.RESET} Modelo actual: {self.valores_actuales['default']}")
+                ConsoleUI.log_info(f"Modelo actual: {ConsoleUI.NARANJA}{self.valores_actuales['default']}")
                 if ConsoleUI.prompt_yn("¿Desea cambiar el Modelo?"):
-                    self.final_modelo = ConsoleUI.prompt_input("Modelo por defecto (ej.: deepseek-r1:14b)")
+                    self.final_modelo = ConsoleUI.prompt_input(f"Modelo por defecto (ej.: {ConsoleUI.NARANJA}deepseek-r1:14b{ConsoleUI.RESET})")
                 else:
                     self.final_modelo = self.valores_actuales['default']
 
@@ -88,7 +88,7 @@ class HermesOrchestrator:
         if self.resp_api:
             llave_actual = self.env_mgr.get_var("API_SERVER_KEY")
             if llave_actual:
-                print(f"{ConsoleUI.VERDE}[INFO]{ConsoleUI.RESET} Se detectó una API-Key guardada actualmente.")
+                ConsoleUI.log_info(f"Se detectó una API-Key guardada actualmente.")
                 if ConsoleUI.prompt_yn("¿Desea actualizar la API-Key actual?"):
                     self.llave_api_final = self.generar_api_key_base64()
                 else:
@@ -102,7 +102,7 @@ class HermesOrchestrator:
         if self.resp_pass:
             pass_actual = self.env_mgr.get_var("HERMES_WEBUI_PASSWORD")
             if pass_actual:
-                print(f"{ConsoleUI.VERDE}[INFO]{ConsoleUI.RESET} Se detectó una contraseña de WebUI guardada actualmente.")
+                ConsoleUI.log_info(f"Se detectó una contraseña de WebUI guardada actualmente.")
                 if ConsoleUI.prompt_yn("¿Desea mantener la misma contraseña?"):
                     self.webui_pass_final = pass_actual
 
@@ -175,7 +175,7 @@ class HermesOrchestrator:
         if self.resp_pass and self.webui_pass_final:
             self.env_mgr.set_var("HERMES_WEBUI_PASSWORD", self.webui_pass_final)
             password_enmascarada = "*" * len(self.webui_pass_final)
-            print(f"{ConsoleUI.VERDE}[WEBUI_PASSWORD GUARDADA]:{ConsoleUI.RESET} {password_enmascarada}")
+            print(f"{ConsoleUI.VERDE}💾[WEBUI_PASSWORD GUARDADA]:{ConsoleUI.RESET} {password_enmascarada}")
             ConsoleUI.log_success("Contraseña asentada en el entorno global de la WebUI.")
         else:
             self.env_mgr.delete_var("HERMES_WEBUI_PASSWORD")
@@ -209,9 +209,9 @@ class HermesOrchestrator:
         
         if not self.error_detected:            
             ConsoleUI.log_success("Endpoints disponibles...")
-            ConsoleUI.log_info(f"Gateway API: http://localhost:{Config.GATEWAY_API_PORT}")
-            ConsoleUI.log_info(f"Dashboard: http://localhost:{Config.DASHBOARD_PORT}")
-            ConsoleUI.log_info(f"Hermes WebUI: http://localhost:{Config.WEBUI_PORT}")
+            ConsoleUI.log_info(f"Gateway API: {ConsoleUI.NARANJA}http://localhost:{Config.GATEWAY_API_PORT}")
+            ConsoleUI.log_info(f"Dashboard: {ConsoleUI.NARANJA}http://localhost:{Config.DASHBOARD_PORT}")
+            ConsoleUI.log_info(f"Hermes WebUI: {ConsoleUI.NARANJA}http://localhost:{Config.WEBUI_PORT}")
 
     def run_installation_steps(self):
         """Ejecuta instalación, setup y dashboard en tres terminales separadas"""

@@ -45,11 +45,11 @@ class ConsoleUI:
 
     @classmethod
     def log_alert(cls, mensaje):
-        print(f"{cls.NARANJA}[ALERTA]{cls.RESET} {mensaje}")
+        print(f"{cls.NARANJA}[⚠️]{mensaje}")
 
     @classmethod
     def log_info(cls, mensaje):
-        print(f"{cls.CIAN}[INFO]{cls.RESET} {mensaje}")
+        print(f"{cls.CIAN}[ℹ️]{cls.RESET} {mensaje}")
 
     @classmethod
     def log_stage(cls, titulo):
@@ -57,24 +57,27 @@ class ConsoleUI:
 
     @classmethod
     def log_step(cls, mensaje):
-        print(f"{cls.AMARILLO}[PASO]{cls.RESET} {mensaje}")
+        print(f"{cls.AMARILLO}[👣]{cls.RESET} {mensaje}")
 
     @classmethod
     def log_success(cls, mensaje):
-        print(f"{cls.VERDE}[OK]{cls.RESET} {mensaje}")
+        print(f"{cls.VERDE}[✅OK]{cls.RESET} {mensaje}")
 
     @classmethod
     def log_error(cls, mensaje):
-        print(f"{cls.ROJO}[ERROR]{cls.RESET} {mensaje}")
+        print(f"[❌] {cls.ROJO}{mensaje}")
+    @classmethod
+    def log_question(cls, mensaje):
+        print(f"{cls.AMARILLO}[❓]{mensaje}")
 
     @classmethod
     def prompt_yn(cls, question_text):
-        resp = input(f"{cls.AMARILLO}[PREGUNTA]{cls.RESET} {question_text} [Y/N]: ").strip().lower()
+        resp = input(f"{cls.AMARILLO}[❓]{question_text} [Y/N]: ").strip().lower()
         return resp == 'y'
 
     @classmethod
     def prompt_input(cls, prompt_text):
-        return input(f"{cls.AMARILLO}[INPUT]{cls.RESET} {prompt_text}: ").strip()
+        return input(f"{cls.AMARILLO}[✏️]{prompt_text}: ").strip()
 
     @classmethod
     def input_password(cls, prompt_text):

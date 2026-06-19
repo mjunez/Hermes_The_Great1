@@ -32,7 +32,7 @@ class HermesInstaller:
         ConsoleUI.log_step(f"Configurando dashboard en puerto {port}...")
         try:
             subprocess.Popen(f'start /wait hermes dashboard --host 0.0.0.0 --port {port} --insecure --no-open', shell=True, cwd=self.user_profile)
-            ConsoleUI.log_alert("Configuración de Dashboard lanzada... NO CIERRE LA VENTANA HASTA QUE DIGA \" ✓ Web UI built\".")
+            ConsoleUI.log_alert(f"Configuración de Dashboard lanzada... NO CIERRE LA VENTANA HASTA QUE DIGA \" ✓ Web UI built\".")
             return True
         except Exception as e:
             ConsoleUI.log_error(f"Error ejecutando dashboard setup: {e}")

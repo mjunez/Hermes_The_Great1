@@ -84,6 +84,10 @@ class YamlConfigManager:
                         bloque_actual = "custom_providers"
                         nuevas_lineas.append(linea)
                         continue
+                    elif linea_strip.startswith("-"):
+                        # Items de lista bajo custom_providers mantienen el bloque activo
+                        if bloque_actual != "custom_providers":
+                            bloque_actual = None
                     elif ":" in linea_strip:
                         bloque_actual = None
 
@@ -102,18 +106,10 @@ class YamlConfigManager:
                         nuevas_lineas.append(f"{' ' * indent_actual}base_url: {base_url}\n")
                     elif linea_strip.startswith("model:") and not linea_strip.startswith("models:"):
                         nuevas_lineas.append(f"{' ' * indent_actual}model: {model}\n")
-                    elif (linea_strip.startswith("- name:") or ":" in linea_strip) and "context_length:" in linea_strip:
-                        partes = linea_strip.split("context_length:")
-                        valor_contexto = partes[1].strip() if len(partes) > 1 else ""
-                        if linea_strip.startswith("-"):
-                            nuevas_lineas.append(f"{' ' * indent_actual}- name: {model}\n{' ' * (indent_actual + 2)}context_length: {valor_contexto}\n")
-                        else:
-                            nuevas_lineas.append(f"{' ' * indent_actual}{model}:\n{' ' * (indent_actual + 2)}context_length: {valor_contexto}\n")
+                    elif linea_strip.endswith(":") and not (linea_strip.startswith("models:") or linea_strip.startswith("base_url:") or linea_strip.startswith("model:")):
+                        nuevas_lineas.append(f"{' ' * indent_actual}{model}:\n")
                     else:
-                        if linea_strip.endswith(":") and not (linea_strip.startswith("models:") or linea_strip.startswith("base_url:") or linea_strip.startswith("model:")):
-                            nuevas_lineas.append(f"{' ' * indent_actual}{model}:\n")
-                        else:
-                            nuevas_lineas.append(linea)
+                        nuevas_lineas.append(linea)
                 else:
                     nuevas_lineas.append(linea)
 
