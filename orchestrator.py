@@ -246,16 +246,28 @@ class HermesOrchestrator:
         """Ejecuta hermes update en una terminal separada"""
         ConsoleUI.log_stage("Ejecutando actualización de Hermes en terminal separada")
         try:
-            result = subprocess.run(f'start /wait hermes update', shell=True)
+            result = subprocess.run(f'start /wait hermes gateway stop', shell=True)
+            result1 = subprocess.run(f'start /wait taskkill /PID 5564 /PID 5864 /F', shell=True)
+            result2 = subprocess.run(f'start /wait hermes update', shell=True)
             
             if result.returncode == 0:
-                ConsoleUI.log_success("Actualización de Hermes completada.")
-                return True
+                ConsoleUI.log_success("Gateway detenido correctamente.")
+                if result1.returncode == 0:
+                    ConsoleUI.log_success("Procesos pendientes de Hermes detenidos correctamente.")
+                    if result2.returncode == 0:
+                        ConsoleUI.log_success("Actualización de Hermes completada con éxito.")
+                        return True
+                    else:
+                        ConsoleUI.log_error(f"Actualización falló: {result2.stderr}")
+                        return False
+                else:
+                    ConsoleUI.log_error(f"Falló la detención de procesos pendientes: {result1.stderr}")
+                    return False
             else:
-                ConsoleUI.log_error(f"Actualización falló: {result.stderr}")
-                return False
+                ConsoleUI.log_error(f"Falló la detención del gateway: {result.stderr}")
+                return False      
         except Exception as e:
-            ConsoleUI.log_error(f"Error ejecutando hermes update: {e}")
+            ConsoleUI.log_error(f"Error ejecutando secuencia de actualización de Hermes: {e}")
             return False
 
     def execute(self):
