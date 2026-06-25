@@ -61,7 +61,7 @@ class ConsoleUI:
 
     @classmethod
     def log_success(cls, mensaje):
-        print(f"{cls.VERDE}[✅OK]{cls.RESET} {mensaje}")
+        print(f"{cls.VERDE}[✅]{cls.RESET} {mensaje}")
 
     @classmethod
     def log_error(cls, mensaje):

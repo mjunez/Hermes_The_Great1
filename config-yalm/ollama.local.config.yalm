@@ -1,11 +1,27 @@
 model:
-  default: qwen3:8b
-  provider: ollama
+  default: nemotron-3-nano:4b
+  provider: ollama-local
   base_url: http://localhost:11434/v1
   api_mode: chat_completions
-  context_length: 65536
-  ollama_num_ctx: 65536
-providers: {}
+  context_length: 262144
+  ollama_num_ctx: 262144
+providers:
+  ollama-local:
+    api: http://localhost:11434/v1
+    name: ollama-local
+    models:
+      nemotron-3-nano:4b:
+        context_length: 262144
+        extra_body:
+          think: false
+      qwen3:8b:
+        context_length: 65536
+        extra_body:
+          think: false
+    default_model: nemotron-3-nano:4b
+    transport: chat_completions
+    extra_body:
+      think: false
 fallback_providers: []
 credential_pool_strategies: {}
 toolsets:
@@ -19,8 +35,10 @@ agent:
   service_tier: ''
   tool_use_enforcement: auto
   task_completion_guidance: true
+  parallel_tool_call_guidance: true
   environment_probe: true
   environment_hint: ''
+  coding_context: auto
   gateway_timeout_warning: 900
   clarify_timeout: 600
   gateway_notify_interval: 180
@@ -33,6 +51,7 @@ terminal:
   cwd: .
   timeout: 180
   env_passthrough: []
+  home_mode: auto
   shell_init_files: []
   auto_source_bashrc: true
   docker_image: nikolaik/python-nodejs:python3.11-nodejs20
@@ -72,6 +91,8 @@ browser:
     adopt_existing_tab: false
     rewrite_loopback_urls: false
     loopback_host_alias: host.docker.internal
+  cloud_provider: firecrawl
+  use_gateway: false
 checkpoints:
   enabled: false
   max_snapshots: 20
@@ -81,6 +102,7 @@ checkpoints:
   retention_days: 7
   delete_orphans: true
   min_interval_hours: 24
+context_file_max_chars: null
 file_read_max_chars: 100000
 tool_output:
   max_bytes: 50000
@@ -106,6 +128,18 @@ compression:
   protect_first_n: 3
   abort_on_summary_failure: false
   codex_gpt55_autoraise: true
+kanban:
+  dispatch_in_gateway: true
+  dispatch_interval_seconds: 60
+  failure_limit: 2
+  worker_log_rotate_bytes: 2097152
+  worker_log_backup_count: 1
+  orchestrator_profile: ''
+  default_assignee: ''
+  max_in_progress_per_profile: null
+  auto_decompose: true
+  auto_decompose_per_tick: 3
+  dispatch_stale_timeout_seconds: 14400
 prompt_caching:
   cache_ttl: 5m
 openrouter:
@@ -209,6 +243,13 @@ auxiliary:
     api_key: ''
     timeout: 600
     extra_body: {}
+  monitor:
+    provider: auto
+    model: ''
+    base_url: ''
+    api_key: ''
+    timeout: 60
+    extra_body: {}
 display:
   compact: false
   personality: ''
@@ -224,13 +265,16 @@ display:
   tui_agents_nudge: true
   bell_on_complete: false
   show_reasoning: false
+  memory_notifications: 'on'
   streaming: false
   timestamps: false
   final_response_markdown: strip
   persistent_output: true
   persistent_output_max_lines: 200
+  persist_prompts: true
   inline_diffs: true
   file_mutation_verifier: true
+  credits_notices: true
   turn_completion_explainer: true
   show_cost: false
   skin: default
@@ -243,6 +287,7 @@ display:
   tool_progress_command: false
   tool_progress_overrides: {}
   tool_preview_length: 0
+  tool_progress_grouping: accumulate
   ephemeral_system_ttl: 0
   platforms:
     telegram:
@@ -347,6 +392,7 @@ delegation:
   child_timeout_seconds: 600
   reasoning_effort: ''
   max_concurrent_children: 3
+  max_async_children: 3
   max_spawn_depth: 1
   orchestrator_enabled: true
   subagent_auto_approve: false
@@ -366,6 +412,7 @@ curator:
   min_idle_hours: 2
   stale_after_days: 30
   archive_after_days: 90
+  consolidate: false
   prune_builtins: true
   backup:
     enabled: true
@@ -410,6 +457,8 @@ telegram:
   reactions: false
   channel_prompts: {}
   allowed_chats: ''
+  extra:
+    rich_messages: true
 mattermost:
   require_mention: true
   free_response_channels: ''
@@ -427,6 +476,7 @@ approvals:
   destructive_slash_confirm: true
 command_allowlist: []
 quick_commands: {}
+platform_hints: {}
 hooks: {}
 hooks_auto_accept: false
 personalities: {}
@@ -446,18 +496,6 @@ security:
 cron:
   wrap_response: true
   max_parallel_jobs: null
-kanban:
-  dispatch_in_gateway: true
-  dispatch_interval_seconds: 60
-  failure_limit: 2
-  worker_log_rotate_bytes: 2097152
-  worker_log_backup_count: 1
-  orchestrator_profile: ''
-  default_assignee: ''
-  max_in_progress_per_profile: null
-  auto_decompose: true
-  auto_decompose_per_tick: 3
-  dispatch_stale_timeout_seconds: 14400
 code_execution:
   mode: project
 tools:
@@ -478,6 +516,8 @@ model_catalog:
 network:
   force_ipv4: false
 gateway:
+  message_timestamps:
+    enabled: false
   strict: false
   media_delivery_allow_dirs: []
   trust_recent_files: true
@@ -524,6 +564,7 @@ secrets:
 paste_collapse_threshold: 5
 paste_collapse_threshold_fallback: 5
 paste_collapse_char_threshold: 2000
+_config_version: 30
 platform_toolsets:
   cli:
   - browser
@@ -534,8 +575,10 @@ platform_toolsets:
   - delegation
   - file
   - image_gen
+  - kanban
   - memory
   - messaging
+  - moa
   - session_search
   - skills
   - terminal
@@ -566,14 +609,9 @@ known_plugin_toolsets:
   - spotify
   telegram:
   - spotify
-custom_providers:
-- name: ollama-local
-  base_url: http://localhost:11434/v1
-  model: qwen3:8b
-  api_mode: chat_completions
-  models:
-    qwen3:8b:
-      context_length: 65536
+image_gen:
+  provider: xai
+  use_gateway: false
 
 # ── Fallback Model ────────────────────────────────────────────────────
 # Automatic provider failover when primary is unavailable.

@@ -47,20 +47,8 @@ class YamlConfigManager:
             pass
         return datos
 
-    @classmethod
-    def validates_differ(cls, path1, path2):
-        campos1 = cls.extract_config(path1)
-        campos2 = cls.extract_config(path2)
-
-        valores_difieren = (campos1["provider"] != campos2["provider"]) or \
-                           (campos1["base_url"] != campos2["base_url"]) or \
-                           (campos1["default"] != campos2["default"])
-        estructura_difiere = (campos1["tiene_custom_providers"] != campos2["tiene_custom_providers"])
-
-        return valores_difieren or estructura_difiere
-
     @staticmethod
-    def build_ollama_local_config(source_yaml_path, base_url, model):
+    def build_ollama_local_config(source_yaml_path, base_url, model, provider=None):
         if not os.path.exists(source_yaml_path):
             ConsoleUI.log_error(f"No se encontró el archivo de origen {source_yaml_path}.")
             return None
@@ -97,7 +85,8 @@ class YamlConfigManager:
                     elif linea_strip.startswith("default:"):
                         nuevas_lineas.append(f"{' ' * indent_actual}default: {model}\n")
                     elif linea_strip.startswith("provider:"):
-                        nuevas_lineas.append(f"{' ' * indent_actual}provider: ollama\n")
+                        provider_value = provider if provider is not None else "ollama"
+                        nuevas_lineas.append(f"{' ' * indent_actual}provider: {provider_value}\n")
                     else:
                         nuevas_lineas.append(linea)
 
@@ -130,8 +119,8 @@ class YamlConfigManager:
             return False
 
     @staticmethod
-    def update_ollama_local(source_yaml_path, yaml_path, base_url, model):
-        content = YamlConfigManager.build_ollama_local_config(source_yaml_path, base_url, model)
+    def update_ollama_local(source_yaml_path, yaml_path, base_url, model, provider=None):
+        content = YamlConfigManager.build_ollama_local_config(source_yaml_path, base_url, model, provider)
         if content is None:
             return False
         return YamlConfigManager.write_string_to_file(

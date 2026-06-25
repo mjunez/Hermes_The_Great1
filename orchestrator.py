@@ -19,6 +19,7 @@ class HermesOrchestrator:
         self.perfil_ruta_completa = None
         self.final_base_url = None
         self.final_modelo = None
+        self.final_provider = None
         self.procesar_personalizacion = False
         self.resp_api = False
         self.llave_api_final = None
@@ -55,7 +56,7 @@ class HermesOrchestrator:
             if "ollama" in self.perfil_seleccionado.lower():
                 self.valores_actuales = YamlConfigManager.extract_config(self.perfil_ruta_completa)
                 ConsoleUI.log_success(
-                    f"Valores predefinidos leídos de {self.perfil_seleccionado}: Base_URL: {self.valores_actuales['base_url']}, Model: {self.valores_actuales['default']}"
+                    f"Valores predefinidos leídos de {self.perfil_seleccionado}: Provider: {self.valores_actuales['provider']}, Base_URL: {self.valores_actuales['base_url']}, Model: {self.valores_actuales['default']}"
                 )
 
                 ConsoleUI.log_info(f"Base URL actual: {ConsoleUI.NARANJA}{self.valores_actuales['base_url']}")
@@ -70,10 +71,16 @@ class HermesOrchestrator:
                 else:
                     self.final_modelo = self.valores_actuales['default']
 
-                if not self.final_base_url or not self.final_modelo:
+                ConsoleUI.log_info(f"Provider actual: {ConsoleUI.NARANJA}{self.valores_actuales['provider']}")
+                if ConsoleUI.prompt_yn("¿Desea cambiar el Provider?"):
+                    self.final_provider = ConsoleUI.prompt_input(f"Provider (ej.: {ConsoleUI.NARANJA}ollama-local{ConsoleUI.RESET})")
+                else:
+                    self.final_provider = self.valores_actuales['provider']
+
+                if not self.final_base_url or not self.final_modelo or not self.final_provider:
                     ConsoleUI.log_error("Entradas inválidas o vacías detectadas. Se abortará la inyección para proteger la integridad estructural.")
                     self.error_detected = True
-                elif self.final_base_url == "No definido" or self.final_modelo == "No definido":
+                elif self.final_base_url == "No definido" or self.final_modelo == "No definido" or self.final_provider == "No definido":
                     ConsoleUI.log_error("No se pudieron aislar variantes válidas en el archivo. Configuración manual mandatoria.")
                     self.error_detected = True
                 else:
@@ -141,7 +148,7 @@ class HermesOrchestrator:
                 ConsoleUI.log_step(
                     f"Construyendo en memoria la configuración de Ollama desde: {self.perfil_seleccionado}..."
                 )
-                if YamlConfigManager.update_ollama_local(self.perfil_ruta_completa, Config.HERMES_GLOBAL_CONFIG_PATH, self.final_base_url, self.final_modelo):
+                if YamlConfigManager.update_ollama_local(self.perfil_ruta_completa, Config.HERMES_GLOBAL_CONFIG_PATH, self.final_base_url, self.final_modelo, self.final_provider):
                     ConsoleUI.log_success("Configuración de Ollama generada en memoria y guardada en el config de Hermes.")
                 else:
                     ConsoleUI.log_error("No se pudo generar la configuración de Ollama.")
@@ -149,15 +156,14 @@ class HermesOrchestrator:
                     return
             else:
                 ConsoleUI.log_step(f"Aplicando el perfil: {self.perfil_seleccionado}...")
-                if YamlConfigManager.validates_differ(self.perfil_ruta_completa, Config.HERMES_GLOBAL_CONFIG_PATH):
-                    YamlConfigManager.read_and_write(
-                        self.perfil_ruta_completa,
-                        Config.HERMES_GLOBAL_CONFIG_PATH,
-                        f"Perfil aplicado con éxito en: {Config.HERMES_GLOBAL_CONFIG_PATH}"
-                    )
-                else:
+                
+                if not YamlConfigManager.read_and_write(
+                     self.perfil_ruta_completa,
+                     Config.HERMES_GLOBAL_CONFIG_PATH,
+                     f"Perfil aplicado con éxito en: {Config.HERMES_GLOBAL_CONFIG_PATH}"
+                     ):
                     ConsoleUI.log_success(
-                        f"La estructura global ya se encuentra en perfecta sincronía con el perfil {self.perfil_seleccionado}."
+                        f"La configuración previa coincide con el Perfil {self.perfil_seleccionado}."
                     )
 
         if self.resp_api and self.llave_api_final:
@@ -165,7 +171,7 @@ class HermesOrchestrator:
             self.env_mgr.set_var("API_SERVER_KEY", self.llave_api_final)
             self.env_mgr.set_var("API_SERVER_HOST", "0.0.0.0")
             self.env_mgr.set_var("API_SERVER_PORT", str(Config.GATEWAY_API_PORT))
-            print(f"{ConsoleUI.VERDE}[API_KEY GUARDADA]:{ConsoleUI.RESET} {self.llave_api_final}")
+            print(f"{ConsoleUI.VERDE}[API_KEY GUARDADA]:{ConsoleUI.NARANJA} {self.llave_api_final}")
             ConsoleUI.log_success("Parámetros de API inyectados con éxito en .env.")
         else:
             for var in ["API_SERVER_ENABLED", "API_SERVER_KEY", "API_SERVER_HOST", "API_SERVER_PORT"]:
@@ -186,8 +192,8 @@ class HermesOrchestrator:
 
         ConsoleUI.log_step("Lanzando Core Daemon ('hermes gateway')...")
         if ProcessManager.run_hidden("hermes gateway"):
-            ProcessManager.run_hidden("hermes gateway")
-            ConsoleUI.log_success("Gateway inicializado exitosamente en segundo plano.")
+            if ProcessManager.run_hidden("hermes gateway"):
+                ConsoleUI.log_success("Gateway inicializado exitosamente en segundo plano.")
         else:
             self.error_detected = True
 
